@@ -9,7 +9,7 @@ interface Props {
 
 export default function PreferenceForm({ metadata, loading, onSubmit }: Props) {
   const [location, setLocation] = useState('');
-  const [budget, setBudget] = useState('medium');
+  const [budget, setBudget] = useState<'low' | 'medium' | 'high'>('medium');
   const [cuisine, setCuisine] = useState('');
   const [minRating, setMinRating] = useState<number>(4.0);
   const [prompt, setPrompt] = useState('');
@@ -53,7 +53,7 @@ export default function PreferenceForm({ metadata, loading, onSubmit }: Props) {
           <select 
             className="input-field" 
             value={budget}
-            onChange={e => setBudget(e.target.value)}
+            onChange={e => setBudget(e.target.value as 'low' | 'medium' | 'high')}
           >
             <option value="low">Low — up to ₹500</option>
             <option value="medium">Medium — ₹500–₹1,500</option>
