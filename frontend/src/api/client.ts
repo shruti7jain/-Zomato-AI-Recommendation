@@ -32,14 +32,16 @@ export interface MetadataResponse {
   budgets: string[];
 }
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 export async function fetchMetadata(): Promise<MetadataResponse> {
-  const r = await fetch('/api/metadata');
+  const r = await fetch(`${API_BASE}/api/metadata`);
   if (!r.ok) throw new Error('Metadata unavailable');
   return r.json();
 }
 
 export async function fetchRecommendations(p: UserPreferences): Promise<RecommendationResponse> {
-  const r = await fetch('/api/recommendations', {
+  const r = await fetch(`${API_BASE}/api/recommendations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(p),
