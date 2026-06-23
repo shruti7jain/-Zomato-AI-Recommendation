@@ -67,4 +67,5 @@ async def health_check():
     }
 
 # ── Static Files (Frontend) ───────────────────────────────────────────────────
-app.mount("/", StaticFiles(directory="../frontend_html", html=True), name="frontend")
+if os.path.isdir("../frontend_html"):
+    app.mount("/", StaticFiles(directory="../frontend_html", html=True), name="frontend")
