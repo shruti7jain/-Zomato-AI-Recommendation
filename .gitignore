@@ -31,3 +31,7 @@ data_cache/
 # OS
 .DS_Store
 Thumbs.db
+
+# Project References
+stitch_extracted/
+*.zip
