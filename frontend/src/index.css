@@ -1,0 +1,175 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design system tokens from DESIGN.md ────────────────────── */
+:root {
+  --surface:          #111415;
+  --surface-low:      #191c1d;
+  --surface-container:#1d2021;
+  --surface-high:     #282a2b;
+  --on-surface:       #e1e3e4;
+  --on-surface-var:   #c8c5cc;
+  --outline:          #929096;
+  --outline-var:      #47464c;
+  --saffron:          #8b5cf6;
+  --coral:            #3b82f6;
+  --accent-gradient:  linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+  --glass-bg:         rgba(255,255,255,0.05);   /* 5% — base cards */
+  --glass-border:     rgba(255,255,255,0.12);   /* 12% — light-catch edge */
+  --blur:             blur(16px);
+  --blur-strong:      blur(24px);               /* for AI input */
+}
+
+@layer base {
+  html  { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+  body  { background: var(--surface); color: var(--on-surface); font-family: 'Inter', sans-serif; min-height: 100vh; }
+  h1,h2,h3,h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
+  * { box-sizing: border-box; }
+}
+
+@layer components {
+
+  /* ── 1200px centred container ── */
+  .container-desktop {
+    width: 100%;
+    max-width: 1200px;
+    margin-inline: auto;
+    padding-inline: 32px;          /* DESIGN.md margin: 32px */
+  }
+
+  /* ── Standard glass card (8% bg, 16px radius, blur 16px) ── */
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 1rem;           /* 16px — Level 2 */
+  }
+
+  /* ── Stronger glass for AI input (12% bg, blur 24px) ── */
+  .glass-ai {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: var(--blur-strong);
+    -webkit-backdrop-filter: var(--blur-strong);
+    border: 1px solid;
+    border-image: linear-gradient(135deg,rgba(139,92,246,0.6),rgba(59,130,246,0.6)) 1;
+    border-radius: 1.5rem;
+  }
+
+  /* ── Form input ── */
+  .input-field {
+    width: 100%;
+    background: var(--surface-high);
+    border: 1px solid var(--outline-var);
+    border-radius: 0.75rem;
+    padding: 12px 16px;
+    color: var(--on-surface);
+    font-size: 0.9375rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .input-field:focus {
+    border-color: var(--saffron);
+    box-shadow: 0 0 0 2px rgba(139,92,246,0.2);
+  }
+  .input-field::placeholder { color: var(--outline); }
+  select.input-field {
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23929096' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    background-size: 16px;
+    padding-right: 40px;
+  }
+
+  /* ── Primary CTA button ── */
+  .btn-accent {
+    background: var(--accent-gradient);
+    background-size: 200% auto;
+    color: #111415;
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 0.8125rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 9999px;         /* pill */
+    padding: 16px 32px;
+    cursor: pointer;
+    transition: background-position 0.35s, transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 20px rgba(139,92,246,0.3);
+  }
+  .btn-accent:hover:not(:disabled) {
+    background-position: right center;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 28px rgba(139,92,246,0.5);
+  }
+  .btn-accent:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── Budget segmented toggle — glass style (DESIGN.md: 20% white active) ── */
+  .budget-toggle {
+    display: flex;
+    background: var(--surface-high);
+    border: 1px solid var(--outline-var);
+    border-radius: 9999px;
+    padding: 4px;
+    gap: 2px;
+  }
+  .budget-toggle button {
+    flex: 1;
+    padding: 8px 20px;
+    border: none;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    background: transparent;
+    color: var(--outline);
+  }
+  .budget-toggle button.active {
+    background: rgba(255,255,255,0.18);  /* 20% white — DESIGN.md spec */
+    color: var(--on-surface);
+  }
+
+  /* ── Cuisine / filter chip ── */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 14px;
+    border: 1px solid var(--outline-var);
+    border-radius: 9999px;
+    font-size: 0.8125rem;
+    color: var(--on-surface-var);
+    background: transparent;
+    white-space: nowrap;
+  }
+
+  /* ── Skeleton shimmer (8%→15% white opacity) ── */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgba(255,255,255,0.05) 25%,
+      rgba(255,255,255,0.12) 50%,
+      rgba(255,255,255,0.05) 75%
+    );
+    background-size: 600px 100%;
+    animation: shimmer 1.8s infinite linear;
+    border-radius: 0.5rem;
+  }
+
+  /* ── Field label ── */
+  .field-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--on-surface-var);
+    margin-bottom: 8px;
+  }
+}
