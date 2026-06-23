@@ -112,22 +112,23 @@ class DataLoader:
     # ── Public API ─────────────────────────────────────────────────────────────
 
     def load(self) -> None:
-        """Download (or load from cache) the dataset and preprocess it."""
-        logger.info("Loading dataset '%s' …", DATASET_ID)
+        """Load the pre-processed dataset from the local parquet file."""
+        logger.info("Loading pre-processed local dataset...")
         try:
-            from datasets import load_dataset  # lazy import for startup speed
-            hf_dataset = load_dataset(DATASET_ID, split=SPLIT)
-            raw_df = hf_dataset.to_pandas()
-            logger.info("Raw dataset loaded: %d rows, columns: %s", len(raw_df), list(raw_df.columns))
+            import os
+            # Ensure we can find the data file regardless of where the app is launched
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            data_path = os.path.join(base_dir, "data", "zomato_clean.parquet")
+            
+            self.df = pd.read_parquet(data_path)
+            logger.info("Clean dataset loaded: %d rows", len(self.df))
         except Exception as exc:
-            logger.critical("Failed to load dataset from Hugging Face: %s", exc)
+            logger.critical("Failed to load local parquet dataset: %s", exc)
             raise
-
-        self.df = self._preprocess(raw_df)
 
         if len(self.df) == 0:
             raise ValueError(
-                "Dataset is empty after preprocessing — check column names or dataset integrity."
+                "Dataset is empty — check dataset integrity."
             )
 
         self._extract_metadata()
