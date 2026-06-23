@@ -1,0 +1,7 @@
+providers = ["python"]
+
+[phases.setup]
+nixPkgs = ["...", "python311", "gcc", "stdenv.cc.cc.lib", "zlib"]
+
+[phases.install]
+cmds = ["...", "pip install -r requirements.txt"]
