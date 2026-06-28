@@ -27,7 +27,7 @@ SPLIT = "train"
 
 # Budget tiers (INR cost-for-two)
 BUDGET_LOW_MAX = 500
-BUDGET_MED_MAX = 1500
+BUDGET_MED_MAX = 1000
 
 # Cap on dataset size sent to the filter layer
 MAX_CANDIDATE_CAP = 30
@@ -44,6 +44,22 @@ CITY_ALIASES: dict[str, str] = {
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _fix_encoding(text: str) -> str:
+    """Repair multi-level UTF-8 mojibake (e.g. 'SantÃ©' → 'Santé')."""
+    if not isinstance(text, str):
+        return text
+    # Keep trying to decode latin-1 → utf-8 until the string stops changing
+    for _ in range(4):
+        try:
+            fixed = text.encode("latin-1").decode("utf-8")
+            if fixed == text:
+                break
+            text = fixed
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            break
+    return text
+
 
 def _parse_rate(raw: str) -> float:
     """Convert strings like '4.1/5', '4.1', 'NEW', '-' to a float."""
@@ -112,18 +128,17 @@ class DataLoader:
     # ── Public API ─────────────────────────────────────────────────────────────
 
     def load(self) -> None:
-        """Load the pre-processed dataset from the local parquet file."""
-        logger.info("Loading pre-processed local dataset...")
+        """Load the dataset from Hugging Face."""
+        logger.info(f"Loading dataset from Hugging Face: {DATASET_ID}")
         try:
-            import os
-            # Ensure we can find the data file regardless of where the app is launched
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-            data_path = os.path.join(base_dir, "data", "zomato_clean.parquet")
+            from datasets import load_dataset
+            dataset = load_dataset(DATASET_ID, split=SPLIT)
+            raw_df = dataset.to_pandas()
+            logger.info("Raw dataset loaded from Hugging Face: %d rows", len(raw_df))
             
-            self.df = pd.read_parquet(data_path)
-            logger.info("Clean dataset loaded: %d rows", len(self.df))
+            self.df = self._preprocess(raw_df)
         except Exception as exc:
-            logger.critical("Failed to load local parquet dataset: %s", exc)
+            logger.critical("Failed to load Hugging Face dataset: %s", exc)
             raise
 
         if len(self.df) == 0:
@@ -163,6 +178,11 @@ class DataLoader:
         df = df[df["name"].str.strip() != ""]
         df = df[df["location"].str.strip() != ""]
 
+        # ── 3b. Fix character encoding on text columns ────────────────────────
+        for _enc_col in ("name", "location", "address", "dish_liked"):
+            if _enc_col in df.columns:
+                df[_enc_col] = df[_enc_col].astype(str).apply(_fix_encoding)
+
         # ── 4. Parse rating ───────────────────────────────────────────────────
         if "rate_raw" in df.columns:
             df["rating"] = df["rate_raw"].apply(_parse_rate)
@@ -175,10 +195,10 @@ class DataLoader:
         else:
             df["cost_for_two"] = 0.0
 
-        # ── 6. Cuisine: fill missing, normalise ───────────────────────────────
+        # ── 6. Cuisine: fill missing, normalise, fix encoding ───────────────
         if "cuisine" not in df.columns:
             df["cuisine"] = "Various"
-        df["cuisine"] = df["cuisine"].fillna("Various").astype(str)
+        df["cuisine"] = df["cuisine"].fillna("Various").astype(str).apply(_fix_encoding)
 
         # ── 7. City / location normalisation ─────────────────────────────────
         if "city" not in df.columns:

@@ -80,7 +80,17 @@ async def recommend(prefs: UserPreferences) -> RecommendationResponse:
 )
 async def get_metadata() -> MetadataResponse:
     """Return metadata for UI dropdowns."""
+    avg_rating = None
+    restaurant_count = None
+    if data_loader.is_ready and data_loader.df is not None:
+        restaurant_count = len(data_loader.df)
+        rated = data_loader.df[data_loader.df["rating"] > 0]["rating"]
+        avg_rating = round(float(rated.mean()), 1) if len(rated) > 0 else None
+
     return MetadataResponse(
         locations=data_loader.locations if data_loader.is_ready else [],
         cuisines=data_loader.cuisines if data_loader.is_ready else [],
+        restaurant_count=restaurant_count,
+        avg_rating=avg_rating,
+        total_locations=len(data_loader.locations) if data_loader.is_ready else None,
     )

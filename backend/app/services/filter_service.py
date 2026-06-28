@@ -84,18 +84,8 @@ def filter_candidates(prefs: UserPreferences) -> tuple[pd.DataFrame, list[str]]:
         logger.warning("No restaurants found for budget tier=%r — returning empty", prefs.budget)
         return pd.DataFrame(), filters_applied + [f"budget={prefs.budget!r} (no matches)"]
 
-    # ── 3. Min rating filter (hard) ────────────────────────────────────────────
-    if prefs.min_rating is not None:
-        rating_mask = df["rating"] >= prefs.min_rating
-        if rating_mask.sum() > 0:
-            df = df[rating_mask]
-            filters_applied.append(f"min_rating>={prefs.min_rating}")
-            logger.debug("After rating filter: %d rows", len(df))
-        else:
-            logger.warning("No restaurants found for min_rating>=%s — returning empty", prefs.min_rating)
-            return pd.DataFrame(), filters_applied + [f"min_rating>={prefs.min_rating} (no matches)"]
-
-    # ── 4. Cuisine filter (hard) ──────────────
+    # ── 3. Cuisine filter (soft) ───────────────────────────────────────────────
+    # Soft: if no match found, skip the cuisine filter and note it in filters_applied
     if prefs.cuisine:
         cuisine_mask = _cuisine_mask(df, prefs.cuisine)
         if cuisine_mask.sum() > 0:
@@ -103,18 +93,84 @@ def filter_candidates(prefs: UserPreferences) -> tuple[pd.DataFrame, list[str]]:
             filters_applied.append(f"cuisine={prefs.cuisine!r}")
             logger.debug("After cuisine filter: %d rows", len(df))
         else:
-            logger.warning("No restaurants found for cuisine=%r — returning empty", prefs.cuisine)
-            return pd.DataFrame(), filters_applied + [f"cuisine={prefs.cuisine!r} (no matches)"]
+            logger.warning(
+                "No restaurants found for cuisine=%r in %r — cuisine filter relaxed",
+                prefs.cuisine, prefs.location,
+            )
+            filters_applied.append(
+                f"cuisine={prefs.cuisine!r} (not available here — showing best nearby options)"
+            )
 
-    # ── 5. Sort and cap ────────────────────────────────────────────────────────
+    # ── 4. Min rating filter (soft) ────────────────────────────────────────────
+    # Soft: if min_rating is too strict, relax it rather than returning empty
+    if prefs.min_rating is not None:
+        rating_mask = df["rating"] >= prefs.min_rating
+        if rating_mask.sum() > 0:
+            df = df[rating_mask]
+            filters_applied.append(f"min_rating>={prefs.min_rating}")
+            logger.debug("After rating filter: %d rows", len(df))
+        else:
+            logger.warning(
+                "No restaurants found for min_rating>=%s — rating filter relaxed",
+                prefs.min_rating,
+            )
+            filters_applied.append(
+                f"min_rating>={prefs.min_rating} (relaxed — showing top-rated options)"
+            )
+
+    # ── 5. Exclude unrated restaurants (rating=0) unless they're all we have ───
+    if "rating" in df.columns:
+        rated = df[df["rating"] > 0]
+        if len(rated) > 0:
+            df = rated   # prefer rated restaurants; keep unrated only if nothing else
+            logger.debug("Excluded %d unrated (rating=0) restaurants", len(df) - len(rated))
+
+    # ── 6. Sort and cap ────────────────────────────────────────────────────────
     sort_cols = [c for c in ["rating", "votes"] if c in df.columns]
     if sort_cols:
         df = df.sort_values(sort_cols, ascending=False)
 
     candidates = df.head(MAX_CANDIDATES).reset_index(drop=True)
 
+    # ── 7. Budget relaxation fallback ──────────────────────────────────────────
+    # If we still have fewer than top_k candidates, relax the budget filter so
+    # we can pad results from the same location across all budget tiers.
+    top_k = getattr(prefs, "top_k", 5)
+    if len(candidates) < top_k:
+        logger.warning(
+            "Only %d candidates — relaxing budget to pad results to %d",
+            len(candidates), top_k,
+        )
+        df_all = data_loader.df.copy()
+        loc_mask2 = _location_mask(df_all, prefs.location)
+        df_all = df_all[loc_mask2]
+        # Also exclude unrated restaurants from the padded extras
+        if "rating" in df_all.columns:
+            rated_all = df_all[df_all["rating"] > 0]
+            if len(rated_all) > 0:
+                df_all = rated_all
+        if prefs.cuisine:
+            cuisine_mask2 = _cuisine_mask(df_all, prefs.cuisine)
+            if cuisine_mask2.sum() > 0:
+                df_all = df_all[cuisine_mask2]
+        if sort_cols:
+            df_all = df_all.sort_values(
+                [c for c in sort_cols if c in df_all.columns], ascending=False
+            )
+        # Pad with extras not already in candidates
+        existing_names = set(candidates["name"].tolist())
+        extras = df_all[~df_all["name"].isin(existing_names)].head(top_k - len(candidates))
+        candidates = pd.concat([candidates, extras], ignore_index=True)
+        filters_applied.append("budget relaxed to find enough results")
+
+        # Re-sort the merged list so padded extras don't disrupt order
+        merge_sort_cols = [c for c in ["rating", "votes"] if c in candidates.columns]
+        if merge_sort_cols:
+            candidates = candidates.sort_values(merge_sort_cols, ascending=False).reset_index(drop=True)
+
     logger.info(
         "Filter complete: %d candidates | filters=%s",
         len(candidates), filters_applied
     )
     return candidates, filters_applied
+

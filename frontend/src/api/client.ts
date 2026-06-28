@@ -14,6 +14,7 @@ export interface Recommendation {
   rating: number;
   estimated_cost: string;
   explanation: string;
+  match_percentage?: number;
 }
 export interface RecommendationMeta {
   candidates_considered: number;
@@ -30,6 +31,9 @@ export interface MetadataResponse {
   locations: string[];
   cuisines: string[];
   budgets: string[];
+  restaurant_count?: number;
+  avg_rating?: number;
+  total_locations?: number;
 }
 
 const API_BASE = import.meta.env.VITE_API_URL || '';

@@ -71,6 +71,7 @@ class Recommendation(BaseModel):
     rating: float
     estimated_cost: str
     explanation: str
+    match_percentage: Optional[int] = None  # 0–100 match score
 
 
 class RecommendationMeta(BaseModel):
@@ -95,3 +96,6 @@ class MetadataResponse(BaseModel):
     locations: List[str]
     cuisines: List[str]
     budgets: List[str] = ["low", "medium", "high"]
+    restaurant_count: Optional[int] = None
+    avg_rating: Optional[float] = None
+    total_locations: Optional[int] = None
