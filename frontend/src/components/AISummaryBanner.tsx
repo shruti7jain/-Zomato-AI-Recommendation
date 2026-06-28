@@ -64,12 +64,6 @@ export function AISummaryBanner({ results }: Props) {
             color="text-on-surface-variant"
           />
 
-          {/* AI fallback badge */}
-          {meta.llm_fallback ? (
-            <StatPill icon="offline_bolt" value="Smart Fallback" label="AI unavailable" color="text-amber-400" />
-          ) : (
-            <StatPill icon="bolt" value="AI Ranked" label="Groq LLM" color="text-emerald-400" />
-          )}
         </div>
 
         {/* Filters applied */}
