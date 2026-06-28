@@ -133,9 +133,18 @@ class DataLoader:
         try:
             from datasets import load_dataset
             dataset = load_dataset(DATASET_ID, split=SPLIT)
+            
+            # Immediately drop heavy text columns before converting to Pandas
+            # This prevents Out-Of-Memory (OOM) crashes on deployment platforms like Railway
+            heavy_cols = ["url", "address", "phone", "reviews_list", "menu_item"]
+            drop_cols = [c for c in heavy_cols if c in dataset.column_names]
+            if drop_cols:
+                dataset = dataset.remove_columns(drop_cols)
+                
             raw_df = dataset.to_pandas()
             logger.info("Raw dataset loaded from Hugging Face: %d rows", len(raw_df))
             
+            # In-place modify to save memory
             self.df = self._preprocess(raw_df)
         except Exception as exc:
             logger.critical("Failed to load Hugging Face dataset: %s", exc)
@@ -156,7 +165,7 @@ class DataLoader:
     # ── Preprocessing ──────────────────────────────────────────────────────────
 
     def _preprocess(self, raw: pd.DataFrame) -> pd.DataFrame:
-        df = raw.copy()
+        df = raw   # Use in-place to save memory (no .copy())
 
         # ── 1. Rename known columns to canonical names ─────────────────────────
         rename_map = {
@@ -179,7 +188,7 @@ class DataLoader:
         df = df[df["location"].str.strip() != ""]
 
         # ── 3b. Fix character encoding on text columns ────────────────────────
-        for _enc_col in ("name", "location", "address", "dish_liked"):
+        for _enc_col in ("name", "location", "dish_liked"):
             if _enc_col in df.columns:
                 df[_enc_col] = df[_enc_col].astype(str).apply(_fix_encoding)
 
@@ -236,7 +245,7 @@ class DataLoader:
         keep = [
             "id", "name", "location", "city", "cuisine",
             "rating", "cost_for_two", "budget_tier",
-            "address", "online_order", "book_table", "votes",
+            "online_order", "book_table", "votes",
             "rest_type", "dish_liked",
         ]
         existing_keep = [c for c in keep if c in df.columns]
