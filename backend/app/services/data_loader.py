@@ -128,26 +128,21 @@ class DataLoader:
     # ── Public API ─────────────────────────────────────────────────────────────
 
     def load(self) -> None:
-        """Load the dataset from Hugging Face."""
-        logger.info(f"Loading dataset from Hugging Face: {DATASET_ID}")
+        """Load the dataset from the local pre-processed file."""
+        import os
+        
+        # Look for the local parquet file
+        data_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "zomato_cleaned.parquet")
+        logger.info(f"Loading local dataset from: {data_path}")
+        
         try:
-            from datasets import load_dataset
-            dataset = load_dataset(DATASET_ID, split=SPLIT)
-            
-            # Immediately drop heavy text columns before converting to Pandas
-            # This prevents Out-Of-Memory (OOM) crashes on deployment platforms like Railway
-            heavy_cols = ["url", "address", "phone", "reviews_list", "menu_item"]
-            drop_cols = [c for c in heavy_cols if c in dataset.column_names]
-            if drop_cols:
-                dataset = dataset.remove_columns(drop_cols)
-                
-            raw_df = dataset.to_pandas()
-            logger.info("Raw dataset loaded from Hugging Face: %d rows", len(raw_df))
+            raw_df = pd.read_parquet(data_path)
+            logger.info("Raw local dataset loaded: %d rows", len(raw_df))
             
             # In-place modify to save memory
             self.df = self._preprocess(raw_df)
         except Exception as exc:
-            logger.critical("Failed to load Hugging Face dataset: %s", exc)
+            logger.critical("Failed to load local dataset: %s", exc)
             raise
 
         if len(self.df) == 0:
