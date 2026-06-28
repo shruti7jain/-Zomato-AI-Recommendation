@@ -7,13 +7,7 @@ interface Props {
 export function AISummaryBanner({ results }: Props) {
   const { meta, summary, recommendations } = results;
 
-  // Accuracy: % of recommendations that matched the primary budget filter
-  const budgetMatched = recommendations.filter(r =>
-    r.match_percentage != null && r.match_percentage >= 60
-  ).length;
-  const accuracy = recommendations.length > 0
-    ? Math.round((budgetMatched / recommendations.length) * 100)
-    : 0;
+
 
   const avgMatch = recommendations.length > 0
     ? Math.round(
